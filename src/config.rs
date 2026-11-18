@@ -1,0 +1,4 @@
+use clap::ValueEnum;
+#[derive(Clone, Copy, Debug, ValueEnum, PartialEq, Eq)] pub enum Level { Basic, Medium, Strong, Extreme }
+#[derive(Clone, Debug)] pub struct Config { pub level: Level, pub minify: bool, pub rename: bool, pub encrypt_strings: bool, pub obfuscate_numbers: bool, pub obfuscate_booleans: bool, pub obfuscate_tables: bool, pub dead_code: bool, pub control_flow: bool, pub target: String, pub seed: Option<u64> }
+impl Config { pub fn apply_level(&mut self) { match self.level { Level::Basic=>{}, Level::Medium=>{self.minify=true;self.rename=true;}, Level::Strong=>{self.minify=true;self.rename=true;self.obfuscate_numbers=true;self.obfuscate_booleans=true;self.obfuscate_tables=true;self.control_flow=true;}, Level::Extreme=>{self.minify=true;self.rename=true;self.obfuscate_numbers=true;self.obfuscate_booleans=true;self.obfuscate_tables=true;self.control_flow=true;self.dead_code=true;self.encrypt_strings=true;} } } }
