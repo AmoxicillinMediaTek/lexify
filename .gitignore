@@ -10,5 +10,5 @@
 # Vercel CLI link/build output
 .vercel/
 
-.vercel
-.env*
+# Local environment overrides
+.env*.local
