@@ -33,6 +33,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Verify Vercel secrets are configured
+        if: ${{ secrets.VERCEL_TOKEN == '' || secrets.VERCEL_ORG_ID == '' || secrets.VERCEL_PROJECT_ID == '' }}
+        run: |
+          echo "::error::Missing Vercel credentials. Add VERCEL_TOKEN, VERCEL_ORG_ID and VERCEL_PROJECT_ID as repository secrets (Settings -> Secrets and variables -> Actions)."
+          exit 1
+
       - name: Set up Node
         uses: actions/setup-node@v5
         with:
@@ -67,7 +73,7 @@ jobs:
       # Keeps the compiled module available for local development, since it is
       # gitignored and cannot be built on a machine without wasm-pack.
       - name: Upload WebAssembly artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: lexify-wasm
           path: web/public/wasm

@@ -10,3 +10,5 @@
 # Vercel CLI link/build output
 .vercel/
 
+.vercel
+.env*
