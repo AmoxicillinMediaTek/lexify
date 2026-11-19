@@ -18,12 +18,16 @@ use rand_chacha::ChaCha8Rng;
 pub use config::Level;
 
 /// Obfuscate Lua source in memory using the selected transformations.
-/// A default seed keeps output deterministic, including in browser builds.
+/// Without an explicit seed every call draws fresh entropy, so the same input
+/// produces a different transformation on each run.
 pub fn obfuscate(source: &str, mut config: Config) -> Result<String, String> {
     let parsed = parser::parse(source).map_err(|e| format!("input parse error: {e}"))?;
     config.apply_level();
     let mut tokens = parsed.tokens;
-    let mut rng = ChaCha8Rng::seed_from_u64(config.seed.unwrap_or(1));
+    let mut rng = match config.seed {
+        Some(seed) => ChaCha8Rng::seed_from_u64(seed),
+        None => ChaCha8Rng::from_entropy(),
+    };
 
     if config.rename {
         renamer::transform(&mut tokens, &mut rng);
@@ -125,11 +129,6 @@ mod browser {
             .and_then(serde_json::Value::as_u64)
             .unwrap_or(4)
             .clamp(1, 64) as usize;
-        config.seed = value.get("seed").and_then(|seed| {
-            seed.as_str()
-                .and_then(|s| s.parse().ok())
-                .or_else(|| seed.as_u64())
-        });
         obfuscate(source, config).map_err(|error| JsValue::from_str(&error))
     }
 }

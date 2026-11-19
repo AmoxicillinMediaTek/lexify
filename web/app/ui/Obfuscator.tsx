@@ -28,7 +28,6 @@ const luaHighlight = HighlightStyle.define([
 
 type Options = {
   level: string;
-  seed: string;
   minify: boolean;
   rename: boolean;
   encryptStrings: boolean;
@@ -44,12 +43,12 @@ type Options = {
   splitSize: number;
 };
 
-function presetOptions(level: string, seed = "1", splitSize = 4): Options {
+function presetOptions(level: string, splitSize = 4): Options {
   const medium = level === "medium" || level === "strong" || level === "extreme";
   const strong = level === "strong" || level === "extreme";
   const extreme = level === "extreme";
   return {
-    level, seed, splitSize,
+    level, splitSize,
     minify: medium,
     rename: medium,
     encryptStrings: extreme,
@@ -140,7 +139,7 @@ export default function Obfuscator() {
   const inputLines = useMemo(() => source.split("\n").length, [source]);
   const outputLines = useMemo(() => output ? output.split("\n").length : 0, [output]);
   const update = <K extends keyof Options>(key: K, value: Options[K]) => setOptions((old) => ({ ...old, [key]: value }));
-  const selectPreset = (level: string) => setOptions((old) => presetOptions(level, old.seed, old.splitSize));
+  const selectPreset = (level: string) => setOptions((old) => presetOptions(level, old.splitSize));
 
   const obfuscate = useCallback(async () => {
     setBusy(true); setError(""); setOutput("");
@@ -150,7 +149,6 @@ export default function Obfuscator() {
         source,
         ...options,
         level: "basic",
-        seed: /^\d{1,16}$/.test(options.seed) ? options.seed : "1",
       };
       const result = runObfuscator(JSON.stringify(payload));
       setOutput(result);
@@ -232,7 +230,6 @@ export default function Obfuscator() {
             <div className="group-head"><span>Control flow</span><span>03</span></div>
             <Toggle label="Normalize conditions" checked={options.controlFlow} onChange={(v) => update("controlFlow", v)} />
             <Toggle label="Add dead code" checked={options.deadCode} onChange={(v) => update("deadCode", v)} />
-            <div className="seed-row"><label htmlFor="seed">Seed</label><input id="seed" type="number" min="0" value={options.seed} onChange={(e) => update("seed", e.target.value)} /><span>Repeatable output</span></div>
           </aside>
         </div>
 

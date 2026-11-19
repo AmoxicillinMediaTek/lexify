@@ -111,10 +111,6 @@ button { color: inherit; }
 .range-row > span:nth-child(2) { font: 9px var(--mono); color: #b3d49d; }
 .range-row input { grid-column: 1 / 3; width: 100%; height: 3px; margin: 2px 0 5px; accent-color: #a5cf88; }
 .range-row.disabled { opacity: .4; }
-.seed-row { display: grid; grid-template-columns: auto 72px 1fr; align-items: center; gap: 8px; margin-top: 13px; color: #a4b0a7; font-size: 9px; }
-.seed-row label { font: 500 9px var(--mono); }
-.seed-row input { width: 72px; height: 27px; border: 1px solid #35443b; border-radius: 4px; background: #202a24; padding: 0 7px; color: #e0e9e1; font: 10px var(--mono); }
-.seed-row > span { font-size: 9px; color: #87958b; }
 .status-bar { min-height: 34px; margin-top: 11px; padding: 8px 12px; border: 1px solid #5b3935; border-radius: 5px; background: #281d1b; color: #edb5a8; display: flex; align-items: center; gap: 8px; font-size: 10px; }
 .status-led { height: 6px; width: 6px; flex: none; background: #df806c; border-radius: 50%; box-shadow: 0 0 0 3px #482d29; }
 .status-bar.is-error { color: #edb5a8; }
@@ -129,7 +125,7 @@ button { color: inherit; }
   .workbench { grid-template-columns: 1fr; }
   .editors-grid { min-height: 480px; }
   .options-panel { border-left: 0; border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; align-content: start; }
-  .options-heading, .field-label, .select-wrap, .settings-separator, .group-head, .seed-row { grid-column: 1 / -1; }
+  .options-heading, .field-label, .select-wrap, .settings-separator, .group-head { grid-column: 1 / -1; }
   .options-heading { margin-bottom: 14px; }
   .settings-separator { margin: 11px 0; }
   .options-panel > .toggle-row, .sub-options { grid-column: span 1; }
@@ -153,7 +149,6 @@ button { color: inherit; }
   .toggle-row { font-size: 9px; }
   .options-panel > .toggle-row:nth-of-type(odd), .options-panel > .toggle-row:nth-of-type(even) { grid-column: auto; }
   .sub-options { grid-column: 1 / -1; }
-  .seed-row { grid-template-columns: auto 68px 1fr; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }

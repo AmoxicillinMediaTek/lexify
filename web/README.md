@@ -32,7 +32,7 @@ Open http://localhost:3000. `npm run build` creates the static export in `out/`.
 ## Demo details
 
 - CodeMirror Lua editors with horizontal scrolling and no line wrapping.
-- Select a preset, toggle individual passes, set a deterministic seed, and adjust string split size.
+- Select a preset, toggle individual passes, and adjust string split size. Each run re-randomises the transform, so the same input gives different output.
 - `⌘/Ctrl + Enter` runs the transform. Copy the generated output from the editor header or footer.
 - Obfuscation runs in the user's browser via WebAssembly; no server-side API or Rust runtime is needed after the static site is built.
 - Set `NEXT_PUBLIC_BASE_PATH` when the site is not served from the domain root.

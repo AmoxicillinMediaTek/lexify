@@ -15,8 +15,6 @@ fn cli_transforms_and_matches_lua_behavior() {
         .arg(&output)
         .arg("--level")
         .arg("extreme")
-        .arg("--seed")
-        .arg("7")
         .assert()
         .success();
     let code = fs::read_to_string(&output).unwrap();
@@ -52,8 +50,6 @@ fn ast_splitting_and_randomized_shared_lookup_preserve_fixture_output() {
             .arg("-o")
             .arg(output)
             .args([
-                "--seed",
-                "1",
                 "--split-strings",
                 "--lookup-tables",
                 "--randomize-lookup",
@@ -69,14 +65,14 @@ fn ast_splitting_and_randomized_shared_lookup_preserve_fixture_output() {
         .arg(&input)
         .arg("-o")
         .arg(&output_extreme)
-        .args(["--seed", "1", "--level", "extreme"])
+        .args(["--level", "extreme"])
         .assert()
         .success();
     let generated = fs::read(&output_a).unwrap();
-    assert_eq!(
+    assert_ne!(
         generated,
         fs::read(&output_b).unwrap(),
-        "seeded output should be deterministic"
+        "unseeded runs should draw fresh randomness"
     );
     let code = String::from_utf8(generated).unwrap();
     assert!(!code.contains("string.char"));

@@ -28,6 +28,9 @@ pub struct Config {
     /// Maximum bytes per fragment when splitting.
     pub split_size: usize,
     pub target: String,
+    /// Pins the RNG so a transformation can be reproduced byte for byte.
+    /// `None`, the default, seeds from fresh entropy instead, so repeated runs
+    /// of the same input differ.
     pub seed: Option<u64>,
 }
 

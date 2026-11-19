@@ -15,8 +15,6 @@ struct Args {
     #[arg(long, value_enum, default_value = "basic")]
     level: Level,
     #[arg(long)]
-    seed: Option<u64>,
-    #[arg(long)]
     minify: bool,
     #[arg(long)]
     rename: bool,
@@ -70,7 +68,7 @@ fn run(args: Args) -> Result<(), String> {
         shared_lookup: args.shared_lookup,
         split_size: args.split_size,
         target: args.target,
-        seed: args.seed,
+        seed: None,
     };
     let output = obfuscate(&source, config)?;
     if let Some(path) = args.output {
