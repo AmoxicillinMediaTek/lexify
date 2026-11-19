@@ -44,6 +44,39 @@ pub fn transform(source: &str, rng: &mut impl RngCore) -> String {
 mod tests {
     use super::{render, STYLES};
 
+    fn lua() -> Option<&'static str> {
+        std::process::Command::new("lua5.4")
+            .arg("-v")
+            .output()
+            .ok()
+            .map(|_| "lua5.4")
+    }
+
+    #[test]
+    fn every_style_matches_lua() {
+        let Some(lua) = lua() else { return };
+        let source = "local base = 1\nlocal function add(a, b) return a + b end\nprint('sum', add(base, 4), select('#', ...))\nreturn 'done', 7\n";
+        let dir = tempfile::tempdir().unwrap();
+        let reference = dir.path().join("reference.lua");
+        std::fs::write(&reference, source).unwrap();
+        let expected = std::process::Command::new(lua)
+            .arg(&reference)
+            .output()
+            .unwrap();
+        assert!(expected.status.success());
+        for style in 0..STYLES {
+            let path = dir.path().join(format!("style-{style}.lua"));
+            std::fs::write(&path, render(style, source, "deadbeef")).unwrap();
+            let got = std::process::Command::new(lua).arg(&path).output().unwrap();
+            assert!(
+                got.status.success(),
+                "style {style} failed: {}",
+                String::from_utf8_lossy(&got.stderr)
+            );
+            assert_eq!(expected.stdout, got.stdout, "style {style} changed output");
+        }
+    }
+
     #[test]
     fn every_style_is_valid_lua_and_keeps_the_chunk() {
         let source = "print('hi')";
