@@ -66,6 +66,23 @@ function presetOptions(level: string, seed = "1", splitSize = 4): Options {
 }
 
 const defaults = presetOptions("basic");
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
+let wasmObfuscatePromise: Promise<(payload: string) => string> | undefined;
+function getWasmObfuscator() {
+  if (!wasmObfuscatePromise) {
+    wasmObfuscatePromise = (async () => {
+      const moduleUrl = new URL(`${basePath}/wasm/lexify_obfuscator.js`, window.location.origin).href;
+      const wasmModule = await import(/* webpackIgnore: true */ moduleUrl) as {
+        default: (input: URL) => Promise<unknown>;
+        wasm_obfuscate: (payload: string) => string;
+      };
+      await wasmModule.default(new URL(`${basePath}/wasm/lexify_obfuscator_bg.wasm`, window.location.origin));
+      return wasmModule.wasm_obfuscate;
+    })();
+  }
+  return wasmObfuscatePromise;
+}
 
 function Icon({ name }: { name: "spark" | "copy" | "download" | "reset" | "chevron" }) {
   const paths = {
@@ -128,16 +145,27 @@ export default function Obfuscator() {
   const obfuscate = useCallback(async () => {
     setBusy(true); setError(""); setOutput("");
     try {
-      const response = await fetch("/api/obfuscate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ source, ...options }) });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Obfuscation failed.");
-      setOutput(result.output);
+      const runObfuscator = await getWasmObfuscator();
+      const payload = {
+        source,
+        ...options,
+        level: "basic",
+        seed: /^\d{1,16}$/.test(options.seed) ? options.seed : "1",
+      };
+      const result = runObfuscator(JSON.stringify(payload));
+      setOutput(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not reach the obfuscator.");
     } finally {
       setBusy(false);
     }
   }, [source, options]);
+
+  useEffect(() => {
+    void getWasmObfuscator().catch((err: unknown) => {
+      setError(err instanceof Error ? `Could not load the browser obfuscator: ${err.message}` : "Could not load the browser obfuscator.");
+    });
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

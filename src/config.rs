@@ -1,5 +1,5 @@
-use clap::ValueEnum;
-#[derive(Clone, Copy, Debug, ValueEnum, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(clap::ValueEnum))]
 pub enum Level {
     Basic,
     Medium,
