@@ -67,6 +67,13 @@ function presetOptions(level: string, splitSize = 4): Options {
 const defaults = presetOptions("basic");
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
+// wasm-bindgen throws plain strings for Rust errors, so read those instead of hiding them.
+function describeError(err: unknown) {
+  if (err instanceof Error && err.message) return err.message;
+  if (typeof err === "string" && err.trim()) return err.trim();
+  return "Obfuscation failed.";
+}
+
 let wasmObfuscatePromise: Promise<(payload: string) => string> | undefined;
 function getWasmObfuscator() {
   if (!wasmObfuscatePromise) {
@@ -143,6 +150,8 @@ export default function Obfuscator() {
 
   const obfuscate = useCallback(async () => {
     setBusy(true); setError(""); setOutput("");
+    // Yield once so the busy state paints before the synchronous wasm call blocks the thread.
+    await new Promise((resolve) => setTimeout(resolve, 0));
     try {
       const runObfuscator = await getWasmObfuscator();
       const payload = {
@@ -153,7 +162,7 @@ export default function Obfuscator() {
       const result = runObfuscator(JSON.stringify(payload));
       setOutput(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not reach the obfuscator.");
+      setError(describeError(err));
     } finally {
       setBusy(false);
     }

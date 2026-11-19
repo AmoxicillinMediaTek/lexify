@@ -24,8 +24,10 @@ struct Binding {
 }
 
 pub fn fresh_identifier(rng: &mut impl RngCore, used: &mut HashSet<String>) -> String {
-    const ALPHABET: &[u8] = b"Il";
-    loop {
+    // Six glyphs per position gives 6^6..6^11 distinct names, so realistic files never starve the
+    // pool. The counter fallback keeps the loop terminating even if the random draws run dry.
+    const ALPHABET: &[u8] = b"Il1O0o";
+    for _ in 0..64 {
         let mut s = String::from("_");
         for _ in 0..rng.gen_range(6..=11) {
             s.push(ALPHABET[rng.gen_range(0..ALPHABET.len())] as char)
@@ -33,6 +35,14 @@ pub fn fresh_identifier(rng: &mut impl RngCore, used: &mut HashSet<String>) -> S
         if used.insert(s.clone()) {
             return s;
         }
+    }
+    let mut index = 0u64;
+    loop {
+        let s = format!("_lx{index:x}");
+        if used.insert(s.clone()) {
+            return s;
+        }
+        index += 1;
     }
 }
 fn is_kw(s: &str) -> bool {
@@ -336,6 +346,26 @@ pub fn transform(tokens: &mut [Token], rng: &mut impl RngCore) -> usize {
             b.replacement = fresh_identifier(rng, &mut used);
         }
     }
+    // Index bindings by name so the reference pass never scans every binding for every token.
+    let mut by_name: HashMap<&str, Vec<usize>> = HashMap::new();
+    for (index, b) in bindings.iter().enumerate() {
+        by_name.entry(b.name.as_str()).or_default().push(index);
+    }
+    // One forward pass records which tokens sit inside a table constructor, replacing the
+    // backward brace scan that made renaming quadratic on large files.
+    let mut in_table = vec![false; tokens.len()];
+    let mut brace_depth = 0usize;
+    for (i, token) in tokens.iter().enumerate() {
+        if token.kind == Kind::Symbol {
+            if token.text == "}" {
+                brace_depth = brace_depth.saturating_sub(1);
+            } else if token.text == "{" {
+                brace_depth += 1;
+                continue;
+            }
+        }
+        in_table[i] = brace_depth > 0;
+    }
     let mut rewrites: HashMap<usize, String> = HashMap::new();
     for b in &bindings {
         for &d in &b.declaration {
@@ -355,42 +385,28 @@ pub fn transform(tokens: &mut [Token], rng: &mut impl RngCore) -> usize {
             continue;
         }
         // A name=value field inside a table constructor is a key, not a variable reference.
-        if tokens.get(i + 1).is_some_and(|t| t.text == "=") {
-            let mut depth = 0;
-            let mut in_table = false;
-            for k in (0..i).rev() {
-                if tokens[k].kind != Kind::Symbol {
-                    continue;
-                }
-                if tokens[k].text == "}" {
-                    depth += 1
-                } else if tokens[k].text == "{" {
-                    if depth == 0 {
-                        in_table = true;
-                        break;
-                    } else {
-                        depth -= 1
-                    }
-                }
-            }
-            if in_table {
-                continue;
-            }
+        if in_table[i] && tokens.get(i + 1).is_some_and(|t| t.text == "=") {
+            continue;
         }
         let scope = token_scope[i];
-        let mut candidates: Vec<&Binding> = bindings
-            .iter()
-            .filter(|b| {
-                b.name == tokens[i].text && i >= b.start && ancestor(scope, b.scope, &scopes)
-            })
-            .collect();
-        candidates.sort_by_key(|b| {
-            (
-                std::cmp::Reverse(scope_depth(b.scope, &scopes)),
-                std::cmp::Reverse(b.start),
-            )
-        });
-        if let Some(b) = candidates.first() {
+        let Some(indexes) = by_name.get(tokens[i].text.as_str()) else {
+            continue;
+        };
+        // Closest enclosing declaration wins: deepest scope first, then the latest start.
+        let mut best: Option<&Binding> = None;
+        let mut best_key = (0usize, 0usize);
+        for &index in indexes {
+            let b = &bindings[index];
+            if i < b.start || !ancestor(scope, b.scope, &scopes) {
+                continue;
+            }
+            let key = (scope_depth(b.scope, &scopes), b.start);
+            if best.is_none() || key > best_key {
+                best = Some(b);
+                best_key = key;
+            }
+        }
+        if let Some(b) = best {
             rewrites.insert(i, b.replacement.clone());
         }
     }
@@ -407,4 +423,27 @@ fn scope_depth(mut s: usize, scopes: &[Scope]) -> usize {
         s = p
     }
     n
+}
+
+#[cfg(test)]
+mod tests {
+    use super::fresh_identifier;
+    use rand::SeedableRng;
+    use rand_chacha::ChaCha8Rng;
+    use std::collections::HashSet;
+
+    /// The pool used to hold only 4,032 names and the generator spun forever once it filled up,
+    /// which froze large files.
+    #[test]
+    fn identifier_pool_never_runs_dry() {
+        let mut rng = ChaCha8Rng::seed_from_u64(9);
+        let mut used = HashSet::new();
+        let mut names = HashSet::new();
+        for _ in 0..6000 {
+            let name = fresh_identifier(&mut rng, &mut used);
+            assert!(name.starts_with('_') && name.len() >= 7, "{name}");
+            names.insert(name);
+        }
+        assert_eq!(names.len(), 6000, "generated names must stay unique");
+    }
 }
