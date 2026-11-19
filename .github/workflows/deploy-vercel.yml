@@ -33,12 +33,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Verify Vercel secrets are configured
-        if: ${{ secrets.VERCEL_TOKEN == '' || secrets.VERCEL_ORG_ID == '' || secrets.VERCEL_PROJECT_ID == '' }}
-        run: |
-          echo "::error::Missing Vercel credentials. Add VERCEL_TOKEN, VERCEL_ORG_ID and VERCEL_PROJECT_ID as repository secrets (Settings -> Secrets and variables -> Actions)."
-          exit 1
-
       - name: Set up Node
         uses: actions/setup-node@v5
         with:
@@ -87,10 +81,18 @@ jobs:
       # project's Root Directory ("web") itself; invoking it from inside `web/`
       # makes it resolve paths to web/web.
       - name: Pull Vercel project settings
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          : "${VERCEL_TOKEN:?Set the VERCEL_TOKEN repository secret (Settings -> Secrets and variables -> Actions)}"
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
       - name: Build static export
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel build --prod --token="$VERCEL_TOKEN"
 
       - name: Deploy prebuilt output
-        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
