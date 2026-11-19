@@ -2,6 +2,10 @@
 
 A Rust CLI for conservative Lua source transformation. `full_moon` validates input and emitted code; deterministic token-level passes transform local names, selected literals, truthiness tests, and unreachable source. No generated dynamic compilation is used.
 
+## Web demo
+
+A local Next.js playground is available in [`web/`](web/README.md). It provides CodeMirror Lua editors and calls the Rust CLI from a temporary source file. Run `cd web && npm install && npm run dev`; see the web README for requirements and deployment limitations.
+
 ## Build and use
 
 ```sh
