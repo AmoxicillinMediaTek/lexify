@@ -10,6 +10,8 @@ mod renamer;
 mod string_encrypt;
 mod string_splitter;
 mod table_obfuscator;
+mod vm;
+mod wrapper;
 
 use config::Config;
 use rand::SeedableRng;
@@ -62,19 +64,30 @@ pub fn obfuscate(source: &str, mut config: Config) -> Result<String, String> {
     if config.dead_code {
         dead_code::transform(&mut tokens, &mut rng)?;
     }
+    if config.vm {
+        let formatted = formatter::format(&tokens, false);
+        let virtualized = vm::transform(&formatted, &mut rng)?;
+        tokens = lexer::lex(&virtualized)?;
+    }
 
-    let output = formatter::format(&tokens, config.minify);
+    let mut output = formatter::format(&tokens, config.minify);
+    if config.wrapper {
+        output = wrapper::transform(&output, &mut rng);
+    }
     parser::parse(&output).map_err(|e| format!("transformed output failed validation: {e}"))?;
-    check_forbidden(&output)?;
+    check_forbidden(&output, config.allow_loadstring)?;
     Ok(output)
 }
 
-fn check_forbidden(code: &str) -> Result<(), String> {
+fn check_forbidden(code: &str, allow_loadstring: bool) -> Result<(), String> {
     let tokens = lexer::lex(code)?;
     for window in tokens.windows(3) {
         if window[0].text == "string" && window[1].text == "." && window[2].text == "char" {
             return Err("output contains forbidden string.char access".into());
         }
+    }
+    if allow_loadstring {
+        return Ok(());
     }
     for token in tokens {
         if token.kind == lexer::Kind::Ident && (token.text == "load" || token.text == "loadstring")
@@ -124,6 +137,9 @@ mod browser {
         config.lookup_tables = bool_option(&value, "lookupTables");
         config.randomize_lookup = bool_option(&value, "randomizeLookup");
         config.shared_lookup = bool_option(&value, "sharedLookup");
+        config.vm = bool_option(&value, "vm");
+        config.wrapper = bool_option(&value, "wrapper");
+        config.allow_loadstring = bool_option(&value, "allowLoadstring");
         config.split_size = value
             .get("splitSize")
             .and_then(serde_json::Value::as_u64)

@@ -47,6 +47,16 @@ struct Args {
     split_size: usize,
     #[arg(long, default_value = "lua54")]
     target: String,
+    /// Lower blocks into a program-counter dispatch loop (VM-shaped layout).
+    /// A deterrent only: it can be bypassed, and re-running gives a new layout.
+    #[arg(long)]
+    vm: bool,
+    /// Run the chunk inside a randomly chosen loader wrapper.
+    #[arg(long)]
+    wrapper: bool,
+    /// Allow load/loadstring in the output instead of rejecting them.
+    #[arg(long)]
+    loadstring: bool,
 }
 
 fn run(args: Args) -> Result<(), String> {
@@ -67,9 +77,18 @@ fn run(args: Args) -> Result<(), String> {
         randomize_lookup: args.randomize_lookup,
         shared_lookup: args.shared_lookup,
         split_size: args.split_size,
+        vm: args.vm,
+        wrapper: args.wrapper,
+        allow_loadstring: args.loadstring,
         target: args.target,
         seed: None,
     };
+    if config.vm {
+        eprintln!(
+            "lexify-obfuscator: warning: the VM layer only reshapes the code and can be bypassed; \
+             re-run the obfuscation to get a different layout."
+        );
+    }
     let output = obfuscate(&source, config)?;
     if let Some(path) = args.output {
         fs::write(&path, output).map_err(|e| format!("{}: {e}", path.display()))?;

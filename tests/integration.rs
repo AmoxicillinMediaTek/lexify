@@ -107,3 +107,90 @@ fn cli_rejects_invalid_lua() {
         .assert()
         .failure();
 }
+
+const VM_SOURCE: &str = "local function fact(n)\n  if n <= 1 then return 1 end\n  return n * fact(n - 1)\nend\nlocal total = 0\nfor i = 1, 5 do total = total + fact(i) end\nlocal function double(x) return x * 2 end\nlocal parts = {}\nfor i = 1, 4 do parts[#parts + 1] = tostring(i) end\nprint(total, double(3), table.concat(parts, '-'), select('#', ...))\n";
+
+#[test]
+fn vm_and_wrapper_preserve_behavior() {
+    let dir = tempfile::tempdir().unwrap();
+    let input = dir.path().join("vm.lua");
+    fs::write(&input, VM_SOURCE).unwrap();
+    let Ok(original) = std::process::Command::new("lua5.4").arg(&input).output() else {
+        return;
+    };
+    assert!(original.status.success());
+
+    let mut shapes = std::collections::HashSet::new();
+    for (index, level) in ["basic", "extreme", "extreme"].iter().enumerate() {
+        let output = dir.path().join(format!("vm-{index}.lua"));
+        let assert = Command::cargo_bin("lexify-obfuscator")
+            .unwrap()
+            .arg(&input)
+            .arg("-o")
+            .arg(&output)
+            .args(["--level", level, "--vm", "--wrapper"])
+            .assert()
+            .success();
+        let stderr = String::from_utf8_lossy(&assert.get_output().stderr).to_string();
+        assert!(stderr.contains("warning"), "missing VM warning: {stderr}");
+
+        let code = fs::read_to_string(&output).unwrap();
+        assert!(code.contains("while"), "no dispatcher in output: {code}");
+        assert!(code.contains("0x"), "no opcodes in output: {code}");
+        let generated = std::process::Command::new("lua5.4")
+            .arg(&output)
+            .output()
+            .unwrap();
+        assert_eq!(
+            original.stdout, generated.stdout,
+            "level {level} changed behaviour:\n{code}"
+        );
+        assert!(generated.status.success());
+        shapes.insert(code);
+    }
+    assert!(
+        shapes.len() > 1,
+        "unseeded runs should draw fresh layouts and wrappers"
+    );
+}
+
+#[test]
+fn load_identifiers_need_the_opt_in() {
+    let dir = tempfile::tempdir().unwrap();
+    let input = dir.path().join("load.lua");
+    let output = dir.path().join("load-out.lua");
+    let source = "local f = loadstring('return 1 + 1')\nlocal g = load('return 2 + 2')\nprint(f and f(), g and g())\n";
+    fs::write(&input, source).unwrap();
+
+    for identifier in ["loadstring", "load"] {
+        let assert = Command::cargo_bin("lexify-obfuscator")
+            .unwrap()
+            .arg(&input)
+            .assert()
+            .failure();
+        let stderr = String::from_utf8_lossy(&assert.get_output().stderr).to_string();
+        assert!(
+            stderr.contains(&format!("contains forbidden identifier {identifier}")),
+            "unexpected error for {identifier}: {stderr}"
+        );
+    }
+
+    Command::cargo_bin("lexify-obfuscator")
+        .unwrap()
+        .arg(&input)
+        .arg("-o")
+        .arg(&output)
+        .args(["--loadstring", "--rename"])
+        .assert()
+        .success();
+    let code = fs::read_to_string(&output).unwrap();
+    assert!(code.contains("loadstring"), "{code}");
+
+    if let Ok(original) = std::process::Command::new("lua5.4").arg(&input).output() {
+        let generated = std::process::Command::new("lua5.4")
+            .arg(&output)
+            .output()
+            .unwrap();
+        assert_eq!(original.stdout, generated.stdout);
+    }
+}

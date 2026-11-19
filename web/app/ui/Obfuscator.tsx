@@ -41,6 +41,9 @@ type Options = {
   randomizeLookup: boolean;
   sharedLookup: boolean;
   splitSize: number;
+  vm: boolean;
+  wrapper: boolean;
+  allowLoadstring: boolean;
 };
 
 function presetOptions(level: string, splitSize = 4): Options {
@@ -61,6 +64,10 @@ function presetOptions(level: string, splitSize = 4): Options {
     lookupTables: extreme,
     randomizeLookup: extreme,
     sharedLookup: extreme,
+    // The VM and the loader wrapper are always opt-in: no preset turns them on.
+    vm: false,
+    wrapper: false,
+    allowLoadstring: false,
   };
 }
 
@@ -146,7 +153,7 @@ export default function Obfuscator() {
   const inputLines = useMemo(() => source.split("\n").length, [source]);
   const outputLines = useMemo(() => output ? output.split("\n").length : 0, [output]);
   const update = <K extends keyof Options>(key: K, value: Options[K]) => setOptions((old) => ({ ...old, [key]: value }));
-  const selectPreset = (level: string) => setOptions((old) => presetOptions(level, old.splitSize));
+  const selectPreset = (level: string) => setOptions((old) => ({ ...presetOptions(level, old.splitSize), vm: old.vm, wrapper: old.wrapper, allowLoadstring: old.allowLoadstring }));
 
   const obfuscate = useCallback(async () => {
     setBusy(true); setError(""); setOutput("");
@@ -239,6 +246,12 @@ export default function Obfuscator() {
             <div className="group-head"><span>Control flow</span><span>03</span></div>
             <Toggle label="Normalize conditions" checked={options.controlFlow} onChange={(v) => update("controlFlow", v)} />
             <Toggle label="Add dead code" checked={options.deadCode} onChange={(v) => update("deadCode", v)} />
+            <div className="settings-separator" />
+            <div className="group-head"><span>Virtual machine</span><span>04</span></div>
+            <Toggle label="Virtualize to bytecode" checked={options.vm} onChange={(v) => update("vm", v)} />
+            {options.vm && <p className="notice" role="note"><strong>Not real protection.</strong> The VM only reshapes code and can be bypassed by hand. Each run is random — press Obfuscate again to get a new layout.</p>}
+            <Toggle label="Loader wrapper" checked={options.wrapper} onChange={(v) => update("wrapper", v)} />
+            <Toggle label="Allow load / loadstring" checked={options.allowLoadstring} onChange={(v) => update("allowLoadstring", v)} />
           </aside>
         </div>
 

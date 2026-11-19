@@ -27,6 +27,13 @@ pub struct Config {
     pub shared_lookup: bool,
     /// Maximum bytes per fragment when splitting.
     pub split_size: usize,
+    /// Lower eligible blocks into a program-counter dispatch loop (a VM-shaped layout).
+    /// Never enabled by a level preset: it is a deterrent, not a correctness boundary.
+    pub vm: bool,
+    /// Run the finished chunk inside a randomly chosen loader facade.
+    pub wrapper: bool,
+    /// Allow `load`/`loadstring` in the output. The guard stays on otherwise.
+    pub allow_loadstring: bool,
     pub target: String,
     /// Pins the RNG so a transformation can be reproduced byte for byte.
     /// `None`, the default, seeds from fresh entropy instead, so repeated runs
@@ -51,6 +58,9 @@ impl Default for Config {
             randomize_lookup: false,
             shared_lookup: false,
             split_size: 4,
+            vm: false,
+            wrapper: false,
+            allow_loadstring: false,
             target: "lua54".into(),
             seed: None,
         }
