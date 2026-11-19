@@ -5,8 +5,6 @@
   "scripts": {
     "dev": "next dev --hostname 127.0.0.1",
     "build": "next build",
-    "build:wasm": "wasm-pack build .. --target web --release --out-dir public/wasm --out-name lexify_obfuscator",
-    "build:pages": "npm run build:wasm && npm run build",
     "start": "next start --hostname 127.0.0.1",
     "lint": "eslint ."
   },

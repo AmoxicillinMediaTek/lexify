@@ -1,0 +1,89 @@
+name: Deploy to Vercel
+
+# The WebAssembly module needs a real Rust toolchain, which the Vercel build image
+# does not provide. Everything is therefore compiled here — WebAssembly first, then
+# the Next.js static export through `vercel build` — and only the build output is
+# uploaded to Vercel with `vercel deploy --prebuilt`.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: vercel-production
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+  WASM_OUT: web/public/wasm
+  WASM_NAME: lexify_obfuscator
+
+jobs:
+  deploy:
+    name: Build WebAssembly and deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install wasm-pack
+        run: curl --proto '=https' --tlsv1.2 -sSf https://wasm-bindgen.github.io/wasm-pack/installer/init.sh | sh
+
+      # `--out-dir` is resolved relative to the crate directory (the repository
+      # root), so this writes web/public/wasm — the path the UI loads at runtime.
+      - name: Build WebAssembly module
+        run: |
+          wasm-pack build . \
+            --target web \
+            --release \
+            --out-dir "$WASM_OUT" \
+            --out-name "$WASM_NAME"
+          test -f "$WASM_OUT/$WASM_NAME.js"
+          test -f "$WASM_OUT/${WASM_NAME}_bg.wasm"
+
+      # Keeps the compiled module available for local development, since it is
+      # gitignored and cannot be built on a machine without wasm-pack.
+      - name: Upload WebAssembly artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lexify-wasm
+          path: web/public/wasm
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      # Run every Vercel command from the repository root. The CLI applies the
+      # project's Root Directory ("web") itself; invoking it from inside `web/`
+      # makes it resolve paths to web/web.
+      - name: Pull Vercel project settings
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build static export
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy prebuilt output
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
