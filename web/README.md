@@ -15,7 +15,7 @@ The UI loads `public/wasm/lexify_obfuscator.js` and `public/wasm/lexify_obfuscat
 ```sh
 # from the repository root
 rustup target add wasm32-unknown-unknown
-wasm-pack build . --target web --release \
+wasm-pack build . --target web --release --no-pack \
   --out-dir web/public/wasm --out-name lexify_obfuscator
 ```
 

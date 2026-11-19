@@ -41,3 +41,9 @@ incremental = false
 lto = true
 codegen-units = 1
 strip = true
+
+# rustc emits bulk-memory instructions (memory.copy / memory.fill) for wasm32
+# without advertising them in the target_features section, so wasm-opt rejects
+# the module unless the features are enabled explicitly.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = ["-O", "--enable-bulk-memory", "--enable-bulk-memory-opt"]

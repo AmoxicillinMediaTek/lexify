@@ -59,7 +59,8 @@ jobs:
             --target web \
             --release \
             --out-dir "$WASM_OUT" \
-            --out-name "$WASM_NAME"
+            --out-name "$WASM_NAME" \
+            --no-pack
           test -f "$WASM_OUT/$WASM_NAME.js"
           test -f "$WASM_OUT/${WASM_NAME}_bg.wasm"
 
