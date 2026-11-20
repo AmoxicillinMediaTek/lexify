@@ -271,4 +271,36 @@ fn antitamper_is_opt_in_and_rejects_edits() {
         .output()
         .unwrap();
     assert!(!hooked.status.success(), "guard ignored an installed hook");
+
+    // A Lua stand-in for debug.getinfo is caught even though it forwards to the
+    // real one: the wrapper reports itself as a Lua function.
+    let wrapped = std::process::Command::new("lua5.4")
+        .arg("-e")
+        .arg("local o=debug.getinfo debug.getinfo=function(f,w) return o(f,w) end")
+        .arg(&guarded)
+        .output()
+        .unwrap();
+    assert!(
+        !wrapped.status.success(),
+        "guard trusted a wrapped debug.getinfo"
+    );
+    assert!(String::from_utf8_lossy(&wrapped.stderr).contains("integrity check failed"));
+
+    // Piping shifts nothing; padding above the chunk shifts every line number.
+    let piped = |text: &str| {
+        let file = dir.path().join("piped.lua");
+        fs::write(&file, text).unwrap();
+        std::process::Command::new("lua5.4")
+            .arg("-")
+            .stdin(fs::File::open(&file).unwrap())
+            .output()
+            .unwrap()
+    };
+    assert!(
+        piped(&code).status.success(),
+        "guard rejected its own output on stdin"
+    );
+    let shifted = piped(&format!("\n{code}"));
+    assert!(!shifted.status.success(), "guard missed a shifted chunk");
+    assert!(String::from_utf8_lossy(&shifted.stderr).contains("integrity check failed"));
 }
