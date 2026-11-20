@@ -108,9 +108,10 @@ function Icon({ name }: { name: "spark" | "copy" | "download" | "reset" | "chevr
   return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>;
 }
 
-function EditorPanel({ title, value, onChange, readOnly, side, count, copied, onCopy }: {
+function EditorPanel({ title, value, onChange, readOnly, side, count, copied, onCopy, onDownload, downloaded }: {
   title: string; value: string; onChange?: (value: string) => void; readOnly?: boolean;
   side: "input" | "output"; count: string; copied?: boolean; onCopy?: () => void;
+  downloaded?: boolean; onDownload?: () => void;
 }) {
   return (
     <section className={`editor-panel ${side}-panel`} aria-label={`${title} editor`}>
@@ -118,6 +119,7 @@ function EditorPanel({ title, value, onChange, readOnly, side, count, copied, on
         <div className="panel-title"><span className={`file-mark ${side}`} /> <h2>{title}</h2> <span className="file-ext">.lua</span></div>
         <div className="panel-actions">
           {side === "output" && value && <button className="icon-button" type="button" onClick={onCopy} aria-label="Copy output" title="Copy output"><Icon name="copy" />{copied && <span className="tooltip">Copied</span>}</button>}
+          {side === "output" && value && <button className="icon-button" type="button" onClick={onDownload} aria-label="Download output as lexifyobfuscated.lua" title="Download lexifyobfuscated.lua"><Icon name="download" />{downloaded && <span className="tooltip">Saved</span>}</button>}
           {side === "input" && <span className="saved-label"><span /> not saved</span>}
         </div>
       </header>
@@ -149,6 +151,7 @@ export default function Obfuscator() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
 
   const inputLines = useMemo(() => source.split("\n").length, [source]);
   const outputLines = useMemo(() => output ? output.split("\n").length : 0, [output]);
@@ -197,8 +200,22 @@ export default function Obfuscator() {
     catch { setError("Clipboard access was blocked by the browser."); }
   }
 
+  function downloadOutput() {
+    const url = URL.createObjectURL(new Blob([output], { type: "text/plain;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "lexifyobfuscated.lua";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setDownloaded(true);
+    window.setTimeout(() => setDownloaded(false), 1600);
+    // Revoked late so slower browsers can still finish writing the file.
+    window.setTimeout(() => URL.revokeObjectURL(url), 10000);
+  }
+
   function reset() {
-    setSource(sample); setOutput(""); setOptions(defaults); setError("");
+    setSource(sample); setOutput(""); setOptions(defaults); setError(""); setDownloaded(false);
   }
 
 
@@ -219,7 +236,7 @@ export default function Obfuscator() {
           <div className="editors-grid">
             <EditorPanel title="Input" value={source} onChange={setSource} side="input" count={`${inputLines} lines · ${new Blob([source]).size} bytes`} />
             <div className="flow-rail" aria-hidden="true"><span><Icon name="chevron" /></span></div>
-            <EditorPanel title="Output" value={output} readOnly side="output" count={output ? `${outputLines} lines · ${new Blob([output]).size} bytes` : "Waiting for source"} copied={copied} onCopy={copyOutput} />
+            <EditorPanel title="Output" value={output} readOnly side="output" count={output ? `${outputLines} lines · ${new Blob([output]).size} bytes` : "Waiting for source"} copied={copied} onCopy={copyOutput} downloaded={downloaded} onDownload={downloadOutput} />
           </div>
           <aside className="options-panel" aria-label="Obfuscation settings">
             <div className="options-heading"><div><h2>Transform</h2><p>Choose how the source changes</p></div><span className="settings-mark">⌘</span></div>
