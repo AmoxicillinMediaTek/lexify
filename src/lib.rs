@@ -77,6 +77,8 @@ pub fn obfuscate(source: &str, mut config: Config) -> Result<String, String> {
     }
     if config.antitamper {
         output = antitamper::transform(&output, &mut rng);
+    } else {
+        output = format!("-- [[script protected by lexify]]\n{output}");
     }
     parser::parse(&output).map_err(|e| format!("transformed output failed validation: {e}"))?;
     check_forbidden(&output, config.allow_loadstring)?;

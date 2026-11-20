@@ -18,6 +18,7 @@ fn cli_transforms_and_matches_lua_behavior() {
         .assert()
         .success();
     let code = fs::read_to_string(&output).unwrap();
+    assert!(code.starts_with("-- [[script protected by lexify]]\n"));
     assert!(!code.contains("string.char"));
     assert!(!code.contains("loadstring"));
     assert!(!code.contains("load("));
@@ -231,6 +232,11 @@ fn antitamper_is_opt_in_and_rejects_edits() {
         .assert()
         .success();
     let code = fs::read_to_string(&guarded).unwrap();
+    assert!(code.starts_with("-- [[script protected by lexify]]\n"));
+    assert!(
+        code.contains("\ndo\n"),
+        "guard should follow the watermark: {code}"
+    );
     assert!(code.contains("integrity check failed"), "{code}");
     assert!(!code.contains("string.char"));
 

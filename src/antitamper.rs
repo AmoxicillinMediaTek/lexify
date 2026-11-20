@@ -35,7 +35,8 @@ const MODULUS: u64 = 2_147_483_647;
 /// Number of randomised identifiers substituted into [`PROLOGUE`].
 const NAMES: usize = 13;
 
-const PROLOGUE: &str = r##"do
+const PROLOGUE: &str = r##"-- [[script protected by lexify]]
+do
 local {{INFO}}=type(debug)=="table" and debug.info or nil
 local {{GI}}=type(debug)=="table" and debug.getinfo or nil
 local {{HK}}=type(debug)=="table" and debug.gethook or nil
