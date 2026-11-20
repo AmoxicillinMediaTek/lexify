@@ -17,6 +17,9 @@ pub struct Config {
     pub obfuscate_tables: bool,
     pub dead_code: bool,
     pub control_flow: bool,
+    /// Flatten eligible statement blocks into a state-variable dispatcher.
+    /// Opt-in only; no level preset enables it.
+    pub cff: bool,
     /// AST-backed literal splitting (replaces raw literals with fragment concatenation).
     pub split_strings: bool,
     /// Emit fragment tables and index into them instead of inlining fragments.
@@ -59,6 +62,7 @@ impl Default for Config {
             obfuscate_tables: false,
             dead_code: false,
             control_flow: false,
+            cff: false,
             split_strings: false,
             lookup_tables: false,
             randomize_lookup: false,
@@ -144,6 +148,23 @@ mod tests {
         assert!(cfg.dead_code && cfg.split_strings && cfg.lookup_tables);
         assert!(cfg.randomize_lookup && cfg.shared_lookup);
         assert!(!cfg.envwrap, "level presets must not enable env wrapping");
+        assert!(
+            !cfg.cff,
+            "level presets must not enable control-flow flattening"
+        );
+    }
+
+    #[test]
+    fn cff_is_opt_in_by_default() {
+        assert!(!Config::default().cff);
+        for level in [Level::Basic, Level::Medium, Level::Strong, Level::Extreme] {
+            let mut cfg = Config {
+                level,
+                ..Config::default()
+            };
+            cfg.apply_level();
+            assert!(!cfg.cff);
+        }
     }
 
     #[test]

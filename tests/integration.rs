@@ -156,6 +156,94 @@ fn vm_and_wrapper_preserve_behavior() {
 }
 
 #[test]
+fn cff_is_opt_in_and_preserves_function_branch_and_loop_behavior() {
+    let dir = tempfile::tempdir().unwrap();
+    let input = dir.path().join("cff.lua");
+    let source = r#"
+local function calculate(limit)
+    local total = 0
+    for i = 1, limit do
+        if i % 2 == 0 then
+            total = total + i
+            total = total + 0
+            total = total - 0
+            total = total + 0
+        else
+            total = total + i * 2
+            total = total + 0
+            total = total - 0
+            total = total + 0
+        end
+    end
+    if total > 10 then
+        total = total + 1
+        total = total + 0
+        total = total - 0
+        total = total + 0
+    else
+        total = total - 1
+        total = total + 0
+        total = total - 0
+        total = total + 0
+    end
+    return total, limit
+end
+print(calculate(5))
+"#;
+    fs::write(&input, source).unwrap();
+
+    let plain = dir.path().join("plain.lua");
+    Command::cargo_bin("lexify-obfuscator")
+        .unwrap()
+        .arg(&input)
+        .arg("-o")
+        .arg(&plain)
+        .assert()
+        .success();
+    assert!(!fs::read_to_string(&plain).unwrap().contains("0x"));
+
+    let output = dir.path().join("cff-out.lua");
+    Command::cargo_bin("lexify-obfuscator")
+        .unwrap()
+        .arg(&input)
+        .arg("-o")
+        .arg(&output)
+        .arg("--cff")
+        .assert()
+        .success();
+    let code = fs::read_to_string(&output).unwrap();
+    assert!(
+        code.contains("while "),
+        "no dispatcher in CFF output: {code}"
+    );
+    assert!(
+        code.contains("0x"),
+        "no shuffled state values in output: {code}"
+    );
+    assert!(
+        code.matches("while ").count() >= 5,
+        "expected dispatchers in the function and nested if branches: {code}"
+    );
+
+    let Ok(original) = std::process::Command::new("lua5.4").arg(&input).output() else {
+        return;
+    };
+    let generated = std::process::Command::new("lua5.4")
+        .arg(&output)
+        .output()
+        .unwrap();
+    assert!(
+        generated.status.success(),
+        "{}",
+        String::from_utf8_lossy(&generated.stderr)
+    );
+    assert_eq!(
+        original.stdout, generated.stdout,
+        "CFF changed behavior:\n{code}"
+    );
+}
+
+#[test]
 fn envwrap_is_opt_in_and_preserves_lua_behavior() {
     let dir = tempfile::tempdir().unwrap();
     let input = dir.path().join("env.lua");

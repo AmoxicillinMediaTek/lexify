@@ -35,6 +35,7 @@ type Options = {
   obfuscateBooleans: boolean;
   obfuscateTables: boolean;
   controlFlow: boolean;
+  cff: boolean;
   deadCode: boolean;
   splitStrings: boolean;
   lookupTables: boolean;
@@ -61,12 +62,13 @@ function presetOptions(level: string, splitSize = 4): Options {
     obfuscateBooleans: strong,
     obfuscateTables: strong,
     controlFlow: strong,
+    cff: false,
     deadCode: extreme,
     splitStrings: extreme,
     lookupTables: extreme,
     randomizeLookup: extreme,
     sharedLookup: extreme,
-    // The VM and the loader wrapper are always opt-in: no preset turns them on.
+    // CFF, the VM, and the loader wrapper are always opt-in: no preset turns them on.
     vm: false,
     wrapper: false,
     envwrap: false,
@@ -160,7 +162,7 @@ export default function Obfuscator() {
   const inputLines = useMemo(() => source.split("\n").length, [source]);
   const outputLines = useMemo(() => output ? output.split("\n").length : 0, [output]);
   const update = <K extends keyof Options>(key: K, value: Options[K]) => setOptions((old) => ({ ...old, [key]: value }));
-  const selectPreset = (level: string) => setOptions((old) => ({ ...presetOptions(level, old.splitSize), vm: old.vm, wrapper: old.wrapper, envwrap: old.envwrap, allowLoadstring: old.allowLoadstring, antitamper: old.antitamper }));
+  const selectPreset = (level: string) => setOptions((old) => ({ ...presetOptions(level, old.splitSize), cff: old.cff, vm: old.vm, wrapper: old.wrapper, envwrap: old.envwrap, allowLoadstring: old.allowLoadstring, antitamper: old.antitamper }));
 
   const obfuscate = useCallback(async () => {
     setBusy(true); setError(""); setOutput("");
@@ -266,6 +268,7 @@ export default function Obfuscator() {
             <div className="settings-separator" />
             <div className="group-head"><span>Control flow</span><span>03</span></div>
             <Toggle label="Normalize conditions" checked={options.controlFlow} onChange={(v) => update("controlFlow", v)} />
+            <Toggle label="Flatten control flow (CFF)" checked={options.cff} onChange={(v) => update("cff", v)} />
             <Toggle label="Add dead code" checked={options.deadCode} onChange={(v) => update("deadCode", v)} />
             <div className="settings-separator" />
             <div className="group-head"><span>Virtual machine</span><span>04</span></div>

@@ -66,10 +66,12 @@ pub fn obfuscate(source: &str, mut config: Config) -> Result<String, String> {
     if config.dead_code {
         dead_code::transform(&mut tokens, &mut rng)?;
     }
-    if config.vm {
+    // CFF and the historical VM option share this safe block-dispatch lowering.
+    // Treat them as aliases so enabling both never wraps the generated dispatcher again.
+    if config.cff || config.vm {
         let formatted = formatter::format(&tokens, false);
-        let virtualized = vm::transform(&formatted, &mut rng)?;
-        tokens = lexer::lex(&virtualized)?;
+        let flattened = vm::transform(&formatted, &mut rng)?;
+        tokens = lexer::lex(&flattened)?;
     }
 
     let mut output = formatter::format(&tokens, config.minify);
@@ -142,6 +144,7 @@ mod browser {
         config.obfuscate_booleans = bool_option(&value, "obfuscateBooleans");
         config.obfuscate_tables = bool_option(&value, "obfuscateTables");
         config.control_flow = bool_option(&value, "controlFlow");
+        config.cff = bool_option(&value, "cff");
         config.dead_code = bool_option(&value, "deadCode");
         config.split_strings = bool_option(&value, "splitStrings");
         config.lookup_tables = bool_option(&value, "lookupTables");

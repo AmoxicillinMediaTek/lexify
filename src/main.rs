@@ -24,6 +24,9 @@ struct Args {
     obfuscate_numbers: bool,
     #[arg(long)]
     control_flow: bool,
+    /// Flatten eligible control-flow blocks into a state-variable dispatcher.
+    #[arg(long)]
+    cff: bool,
     #[arg(long)]
     obfuscate_booleans: bool,
     #[arg(long)]
@@ -78,6 +81,7 @@ fn run(args: Args) -> Result<(), String> {
         obfuscate_tables: args.obfuscate_tables,
         dead_code: args.dead_code,
         control_flow: args.control_flow,
+        cff: args.cff,
         split_strings: args.split_strings,
         lookup_tables: args.lookup_tables,
         randomize_lookup: args.randomize_lookup,
@@ -91,9 +95,9 @@ fn run(args: Args) -> Result<(), String> {
         target: args.target,
         seed: None,
     };
-    if config.vm {
+    if config.vm || config.cff {
         eprintln!(
-            "lexify-obfuscator: warning: the VM layer only reshapes the code and can be bypassed; \
+            "lexify-obfuscator: warning: control-flow flattening only reshapes the code and can be bypassed; \
              re-run the obfuscation to get a different layout."
         );
     }
