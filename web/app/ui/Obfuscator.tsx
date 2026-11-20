@@ -44,6 +44,7 @@ type Options = {
   vm: boolean;
   wrapper: boolean;
   allowLoadstring: boolean;
+  antitamper: boolean;
 };
 
 function presetOptions(level: string, splitSize = 4): Options {
@@ -68,6 +69,7 @@ function presetOptions(level: string, splitSize = 4): Options {
     vm: false,
     wrapper: false,
     allowLoadstring: false,
+    antitamper: false,
   };
 }
 
@@ -156,7 +158,7 @@ export default function Obfuscator() {
   const inputLines = useMemo(() => source.split("\n").length, [source]);
   const outputLines = useMemo(() => output ? output.split("\n").length : 0, [output]);
   const update = <K extends keyof Options>(key: K, value: Options[K]) => setOptions((old) => ({ ...old, [key]: value }));
-  const selectPreset = (level: string) => setOptions((old) => ({ ...presetOptions(level, old.splitSize), vm: old.vm, wrapper: old.wrapper, allowLoadstring: old.allowLoadstring }));
+  const selectPreset = (level: string) => setOptions((old) => ({ ...presetOptions(level, old.splitSize), vm: old.vm, wrapper: old.wrapper, allowLoadstring: old.allowLoadstring, antitamper: old.antitamper }));
 
   const obfuscate = useCallback(async () => {
     setBusy(true); setError(""); setOutput("");
@@ -269,6 +271,10 @@ export default function Obfuscator() {
             {options.vm && <p className="notice" role="note"><strong>Not real protection.</strong> The VM only reshapes code and can be bypassed by hand. Each run is random — press Obfuscate again to get a new layout.</p>}
             <Toggle label="Loader wrapper" checked={options.wrapper} onChange={(v) => update("wrapper", v)} />
             <Toggle label="Allow load / loadstring" checked={options.allowLoadstring} onChange={(v) => update("allowLoadstring", v)} />
+            <div className="settings-separator" />
+            <div className="group-head"><span>Guard</span><span>05</span></div>
+            <Toggle label="Anti-tamper check" checked={options.antitamper} onChange={(v) => update("antitamper", v)} />
+            {options.antitamper && <p className="notice" role="note">The chunk fingerprints its own file and re-checks the interpreter at startup, then stops with an integrity error if either changed. Only checks when the script is run from a file — stdin and REPL runs skip it.</p>}
           </aside>
         </div>
 

@@ -1,3 +1,4 @@
+mod antitamper;
 mod boolean_obfuscator;
 pub mod config;
 mod control_flow;
@@ -74,6 +75,9 @@ pub fn obfuscate(source: &str, mut config: Config) -> Result<String, String> {
     if config.wrapper {
         output = wrapper::transform(&output, &mut rng);
     }
+    if config.antitamper {
+        output = antitamper::transform(&output, &mut rng);
+    }
     parser::parse(&output).map_err(|e| format!("transformed output failed validation: {e}"))?;
     check_forbidden(&output, config.allow_loadstring)?;
     Ok(output)
@@ -140,6 +144,7 @@ mod browser {
         config.vm = bool_option(&value, "vm");
         config.wrapper = bool_option(&value, "wrapper");
         config.allow_loadstring = bool_option(&value, "allowLoadstring");
+        config.antitamper = bool_option(&value, "antitamper");
         config.split_size = value
             .get("splitSize")
             .and_then(serde_json::Value::as_u64)

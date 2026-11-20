@@ -194,3 +194,81 @@ fn load_identifiers_need_the_opt_in() {
         assert_eq!(original.stdout, generated.stdout);
     }
 }
+
+const GUARD_SOURCE: &str = "local function label(name)\n  return name:upper() .. '!'\nend\nlocal rows = {}\nfor i = 1, 3 do rows[i] = label('row' .. i) end\nprint(table.concat(rows, ','), #rows)\n";
+
+#[test]
+fn antitamper_is_opt_in_and_rejects_edits() {
+    let dir = tempfile::tempdir().unwrap();
+    let input = dir.path().join("guard.lua");
+    fs::write(&input, GUARD_SOURCE).unwrap();
+
+    // Every level leaves it off, so the guard is only present when asked for.
+    for level in ["basic", "medium", "strong", "extreme"] {
+        let output = dir.path().join(format!("plain-{level}.lua"));
+        Command::cargo_bin("lexify-obfuscator")
+            .unwrap()
+            .arg(&input)
+            .arg("-o")
+            .arg(&output)
+            .args(["--level", level])
+            .assert()
+            .success();
+        let code = fs::read_to_string(&output).unwrap();
+        assert!(
+            !code.contains("integrity check failed"),
+            "level {level} enabled the guard"
+        );
+    }
+
+    let guarded = dir.path().join("guarded.lua");
+    Command::cargo_bin("lexify-obfuscator")
+        .unwrap()
+        .arg(&input)
+        .arg("-o")
+        .arg(&guarded)
+        .args(["--level", "extreme", "--antitamper"])
+        .assert()
+        .success();
+    let code = fs::read_to_string(&guarded).unwrap();
+    assert!(code.contains("integrity check failed"), "{code}");
+    assert!(!code.contains("string.char"));
+
+    let Ok(original) = std::process::Command::new("lua5.4").arg(&input).output() else {
+        return;
+    };
+    let generated = std::process::Command::new("lua5.4")
+        .arg(&guarded)
+        .output()
+        .unwrap();
+    assert!(generated.status.success(), "guard rejected its own output");
+    assert_eq!(original.stdout, generated.stdout);
+
+    // A trailing newline is tolerated, but an edit inside the chunk is not.
+    let padded = dir.path().join("padded.lua");
+    fs::write(&padded, format!("{code}\n\n")).unwrap();
+    assert!(std::process::Command::new("lua5.4")
+        .arg(&padded)
+        .output()
+        .unwrap()
+        .status
+        .success());
+
+    let tampered = dir.path().join("tampered.lua");
+    fs::write(&tampered, code.replacen("do\n", "do\n\n", 1)).unwrap();
+    let rejected = std::process::Command::new("lua5.4")
+        .arg(&tampered)
+        .output()
+        .unwrap();
+    assert!(!rejected.status.success(), "edited file still ran");
+    assert!(String::from_utf8_lossy(&rejected.stderr).contains("integrity check failed"));
+
+    // A debug hook is an environment change the guard also refuses.
+    let hooked = std::process::Command::new("lua5.4")
+        .arg("-e")
+        .arg("debug.sethook(function() end, '', 1000)")
+        .arg(&guarded)
+        .output()
+        .unwrap();
+    assert!(!hooked.status.success(), "guard ignored an installed hook");
+}

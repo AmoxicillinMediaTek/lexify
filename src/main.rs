@@ -54,6 +54,9 @@ struct Args {
     /// Run the chunk inside a randomly chosen loader wrapper.
     #[arg(long)]
     wrapper: bool,
+    /// Prefix the output with a runtime guard that fingerprints its own file.
+    #[arg(long)]
+    antitamper: bool,
     /// Allow load/loadstring in the output instead of rejecting them.
     #[arg(long)]
     loadstring: bool,
@@ -80,6 +83,7 @@ fn run(args: Args) -> Result<(), String> {
         vm: args.vm,
         wrapper: args.wrapper,
         allow_loadstring: args.loadstring,
+        antitamper: args.antitamper,
         target: args.target,
         seed: None,
     };

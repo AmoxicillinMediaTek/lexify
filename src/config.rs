@@ -34,6 +34,9 @@ pub struct Config {
     pub wrapper: bool,
     /// Allow `load`/`loadstring` in the output. The guard stays on otherwise.
     pub allow_loadstring: bool,
+    /// Inject a runtime guard that fingerprints its own file and checks the
+    /// environment. Opt-in only: no level preset turns it on.
+    pub antitamper: bool,
     pub target: String,
     /// Pins the RNG so a transformation can be reproduced byte for byte.
     /// `None`, the default, seeds from fresh entropy instead, so repeated runs
@@ -61,6 +64,7 @@ impl Default for Config {
             vm: false,
             wrapper: false,
             allow_loadstring: false,
+            antitamper: false,
             target: "lua54".into(),
             seed: None,
         }
