@@ -32,6 +32,9 @@ pub struct Config {
     pub vm: bool,
     /// Run the finished chunk inside a randomly chosen loader facade.
     pub wrapper: bool,
+    /// Run the chunk with a proxy `_ENV` / `_G` that forwards global access
+    /// while hiding the real global table behind a protected metatable.
+    pub envwrap: bool,
     /// Allow `load`/`loadstring` in the output. The guard stays on otherwise.
     pub allow_loadstring: bool,
     /// Inject a runtime guard that fingerprints its own file and checks the
@@ -63,6 +66,7 @@ impl Default for Config {
             split_size: 4,
             vm: false,
             wrapper: false,
+            envwrap: false,
             allow_loadstring: false,
             antitamper: false,
             target: "lua54".into(),
@@ -139,6 +143,20 @@ mod tests {
         cfg.apply_level();
         assert!(cfg.dead_code && cfg.split_strings && cfg.lookup_tables);
         assert!(cfg.randomize_lookup && cfg.shared_lookup);
+        assert!(!cfg.envwrap, "level presets must not enable env wrapping");
+    }
+
+    #[test]
+    fn envwrap_is_opt_in_by_default() {
+        assert!(!Config::default().envwrap);
+        for level in [Level::Basic, Level::Medium, Level::Strong, Level::Extreme] {
+            let mut cfg = Config {
+                level,
+                ..Config::default()
+            };
+            cfg.apply_level();
+            assert!(!cfg.envwrap);
+        }
     }
 
     #[test]

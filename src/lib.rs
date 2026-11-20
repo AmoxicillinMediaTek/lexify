@@ -3,6 +3,7 @@ mod boolean_obfuscator;
 pub mod config;
 mod control_flow;
 mod dead_code;
+mod env_wrapper;
 mod formatter;
 mod lexer;
 mod number_obfuscator;
@@ -75,6 +76,9 @@ pub fn obfuscate(source: &str, mut config: Config) -> Result<String, String> {
     if config.wrapper {
         output = wrapper::transform(&output, &mut rng);
     }
+    if config.envwrap {
+        output = env_wrapper::transform(&output, &mut rng);
+    }
     if config.antitamper {
         output = antitamper::transform(&output, &mut rng);
     } else {
@@ -145,6 +149,7 @@ mod browser {
         config.shared_lookup = bool_option(&value, "sharedLookup");
         config.vm = bool_option(&value, "vm");
         config.wrapper = bool_option(&value, "wrapper");
+        config.envwrap = bool_option(&value, "envwrap");
         config.allow_loadstring = bool_option(&value, "allowLoadstring");
         config.antitamper = bool_option(&value, "antitamper");
         config.split_size = value

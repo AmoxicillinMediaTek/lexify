@@ -156,6 +156,55 @@ fn vm_and_wrapper_preserve_behavior() {
 }
 
 #[test]
+fn envwrap_is_opt_in_and_preserves_lua_behavior() {
+    let dir = tempfile::tempdir().unwrap();
+    let input = dir.path().join("env.lua");
+    let source =
+        "print(_G == _ENV, ...)\n_G.lexify_envwrap_cli = 17\nprint(_G.lexify_envwrap_cli)\n";
+    fs::write(&input, source).unwrap();
+
+    for level in ["basic", "medium", "strong", "extreme"] {
+        let output = dir.path().join(format!("plain-{level}.lua"));
+        Command::cargo_bin("lexify-obfuscator")
+            .unwrap()
+            .arg(&input)
+            .arg("-o")
+            .arg(&output)
+            .args(["--level", level])
+            .assert()
+            .success();
+        assert!(!fs::read_to_string(output)
+            .unwrap()
+            .contains("cannot rawset the protected global environment"));
+    }
+
+    let output = dir.path().join("wrapped.lua");
+    Command::cargo_bin("lexify-obfuscator")
+        .unwrap()
+        .arg(&input)
+        .arg("-o")
+        .arg(&output)
+        .arg("--envwrap")
+        .assert()
+        .success();
+    let code = fs::read_to_string(&output).unwrap();
+    assert!(code.contains("cannot rawset the protected global environment"));
+    let Ok(original) = std::process::Command::new("lua5.4").arg(&input).output() else {
+        return;
+    };
+    let generated = std::process::Command::new("lua5.4")
+        .arg(&output)
+        .output()
+        .unwrap();
+    assert!(
+        generated.status.success(),
+        "{}",
+        String::from_utf8_lossy(&generated.stderr)
+    );
+    assert_eq!(original.stdout, generated.stdout);
+}
+
+#[test]
 fn load_identifiers_need_the_opt_in() {
     let dir = tempfile::tempdir().unwrap();
     let input = dir.path().join("load.lua");

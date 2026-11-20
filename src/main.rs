@@ -54,6 +54,9 @@ struct Args {
     /// Run the chunk inside a randomly chosen loader wrapper.
     #[arg(long)]
     wrapper: bool,
+    /// Isolate global reads and writes behind a protected `_ENV` / `_G` proxy.
+    #[arg(long)]
+    envwrap: bool,
     /// Prefix the output with a runtime guard that fingerprints its own file.
     #[arg(long)]
     antitamper: bool,
@@ -82,6 +85,7 @@ fn run(args: Args) -> Result<(), String> {
         split_size: args.split_size,
         vm: args.vm,
         wrapper: args.wrapper,
+        envwrap: args.envwrap,
         allow_loadstring: args.loadstring,
         antitamper: args.antitamper,
         target: args.target,

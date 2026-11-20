@@ -43,6 +43,7 @@ type Options = {
   splitSize: number;
   vm: boolean;
   wrapper: boolean;
+  envwrap: boolean;
   allowLoadstring: boolean;
   antitamper: boolean;
 };
@@ -68,6 +69,7 @@ function presetOptions(level: string, splitSize = 4): Options {
     // The VM and the loader wrapper are always opt-in: no preset turns them on.
     vm: false,
     wrapper: false,
+    envwrap: false,
     allowLoadstring: false,
     antitamper: false,
   };
@@ -158,7 +160,7 @@ export default function Obfuscator() {
   const inputLines = useMemo(() => source.split("\n").length, [source]);
   const outputLines = useMemo(() => output ? output.split("\n").length : 0, [output]);
   const update = <K extends keyof Options>(key: K, value: Options[K]) => setOptions((old) => ({ ...old, [key]: value }));
-  const selectPreset = (level: string) => setOptions((old) => ({ ...presetOptions(level, old.splitSize), vm: old.vm, wrapper: old.wrapper, allowLoadstring: old.allowLoadstring, antitamper: old.antitamper }));
+  const selectPreset = (level: string) => setOptions((old) => ({ ...presetOptions(level, old.splitSize), vm: old.vm, wrapper: old.wrapper, envwrap: old.envwrap, allowLoadstring: old.allowLoadstring, antitamper: old.antitamper }));
 
   const obfuscate = useCallback(async () => {
     setBusy(true); setError(""); setOutput("");
@@ -270,6 +272,8 @@ export default function Obfuscator() {
             <Toggle label="Virtualize to bytecode" checked={options.vm} onChange={(v) => update("vm", v)} />
             {options.vm && <p className="notice" role="note"><strong>Not real protection.</strong> The VM only reshapes code and can be bypassed by hand. Each run is random — press Obfuscate again to get a new layout.</p>}
             <Toggle label="Loader wrapper" checked={options.wrapper} onChange={(v) => update("wrapper", v)} />
+            <Toggle label="Protect global environment" checked={options.envwrap} onChange={(v) => update("envwrap", v)} />
+            {options.envwrap && <p className="notice" role="note">Global reads and writes are routed through a proxy; raw access to the backing table is blocked. This raises the cost of casual inspection but is not a sandbox against a hostile host or debug library.</p>}
             <Toggle label="Allow load / loadstring" checked={options.allowLoadstring} onChange={(v) => update("allowLoadstring", v)} />
             <div className="settings-separator" />
             <div className="group-head"><span>Guard</span><span>05</span></div>
